@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I miei lavori da fare</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2330; --muted:#6b7280;
+    --line:#e5e7eb; --accent:#2563eb; --head:#f1f5f9; --ok:#16a34a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f1117; --card:#171a22; --ink:#e6e8ee; --muted:#9aa1ad;
+           --line:#2a2f3a; --accent:#5b8cff; --head:#1e2430; --ok:#4ade80; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.55}
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;
+          padding:10px 20px;background:var(--card);border-bottom:1px solid var(--line)}
+  .dot{width:10px;height:10px;border-radius:50%;background:#9ca3af;transition:background .3s}
+  .dot.live{background:var(--ok)}
+  .dot.pulse{animation:pulse 1s ease-out}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}100%{box-shadow:0 0 0 12px rgba(34,197,94,0)}}
+  .topbar .meta{font-size:13px;color:var(--muted)}
+  .topbar .spacer{flex:1}
+  .badge{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:3px 10px}
+  .wrap{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:8px 28px 28px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  h1{font-size:26px;margin:22px 0 6px}
+  h2{font-size:19px;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;margin:20px 0 8px}
+  p{margin:8px 0}
+  hr{border:none;border-top:1px solid var(--line);margin:22px 0}
+  blockquote{margin:12px 0;padding:8px 14px;border-left:3px solid var(--accent);
+             background:rgba(37,99,235,.06);border-radius:0 8px 8px 0;color:var(--muted);font-size:14px}
+  ul{margin:8px 0;padding-left:22px}
+  li{margin:4px 0}
+  code{background:var(--head);padding:1px 6px;border-radius:5px;font-size:.9em}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px;overflow:hidden;
+        border:1px solid var(--line);border-radius:10px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--head);font-weight:600}
+  tr:last-child td{border-bottom:none}
+  .err{color:#dc2626;font-size:13px}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div id="dot" class="dot"></div>
+    <strong>Lavori da fare</strong>
+    <div class="spacer"></div>
+    <span class="badge" id="ver"></span>
+    <div class="meta" id="meta">In attesa…</div>
+  </div>
+  <div class="wrap">
+    <div class="card" id="content"></div>
+  </div>
+
+<script>
+// Richiede app.withGlobalTauri = true in tauri.conf.json
+const invoke = window.__TAURI__.core.invoke;
+const dot = document.getElementById('dot');
+const meta = document.getElementById('meta');
+let last = null;
+
+function inline(t){
+  t = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  t = t.replace(/(^|[^*])\*([^*]+)\*/g,'$1<em>$2</em>');
+  t = t.replace(/`([^`]+)`/g,'<code>$1</code>');
+  return t;
+}
+function parseRow(r){ return r.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim()); }
+function isSep(s){ s=s.trim(); return /^[\s|:-]+$/.test(s) && s.includes('-') && s.includes('|'); }
+function render(md){
+  const lines = md.replace(/\r\n/g,'\n').split('\n');
+  let out='', i=0;
+  while(i<lines.length){
+    let line=lines[i];
+    if(/^\s*$/.test(line)){ i++; continue; }
+    if(/^---+\s*$/.test(line)){ out+='<hr>'; i++; continue; }
+    let h=line.match(/^(#{1,6})\s+(.*)$/);
+    if(h){ const l=h[1].length; out+=`<h${l}>${inline(h[2])}</h${l}>`; i++; continue; }
+    if(/^\s*\|.*\|\s*$/.test(line) && i+1<lines.length && isSep(lines[i+1])){
+      const headers=parseRow(line); i+=2; let rows=[];
+      while(i<lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){ rows.push(parseRow(lines[i])); i++; }
+      let t='<table><thead><tr>'+headers.map(c=>`<th>${inline(c)}</th>`).join('')+'</tr></thead><tbody>';
+      for(const r of rows){ t+='<tr>'+r.map(c=>`<td>${inline(c)}</td>`).join('')+'</tr>'; }
+      out+=t+'</tbody></table>'; continue;
+    }
+    if(/^\s*>\s?/.test(line)){
+      let bq=''; while(i<lines.length && /^\s*>\s?/.test(lines[i])){ bq+=inline(lines[i].replace(/^\s*>\s?/,''))+'<br>'; i++; }
+      out+=`<blockquote>${bq}</blockquote>`; continue;
+    }
+    if(/^\s*[-*]\s+/.test(line)){
+      let lst=''; while(i<lines.length && /^\s*[-*]\s+/.test(lines[i])){ lst+=`<li>${inline(lines[i].replace(/^\s*[-*]\s+/,''))}</li>`; i++; }
+      out+=`<ul>${lst}</ul>`; continue;
+    }
+    out+=`<p>${inline(line)}</p>`; i++;
+  }
+  return out;
+}
+function stamp(){ return new Date().toLocaleTimeString('it-IT'); }
+
+async function tick(){
+  try{
+    const txt = await invoke('read_tasks');
+    dot.classList.add('live');
+    if(txt !== last){
+      last = txt;
+      document.getElementById('content').innerHTML = render(txt);
+      dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse');
+      meta.textContent = 'Aggiornato alle ' + stamp();
+    } else if(!meta.textContent.startsWith('Aggiornato')){
+      meta.textContent = 'In ascolto · ' + stamp();
+    }
+  }catch(e){
+    dot.classList.remove('live');
+    meta.innerHTML = '<span class="err">File non leggibile: '+e+'</span>';
+  }
+}
+setInterval(tick, 2000); tick();
+
+// Mostra la versione in barra. Il controllo aggiornamenti (con richiesta)
+// avviene nel backend Rust all'avvio: qui non serve fare nulla.
+(async ()=>{ try{ document.getElementById('ver').textContent = 'v'+await invoke('app_version'); }catch(e){} })();
+</script>
+</body>
+</html>

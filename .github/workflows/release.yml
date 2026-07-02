@@ -1,0 +1,41 @@
+# =====================================================================
+#  .github/workflows/release.yml
+#  Quando pushi un tag "v..." -> build + firma + Release su GitHub.
+#  Secrets richiesti (Settings > Secrets and variables > Actions):
+#    TAURI_SIGNING_PRIVATE_KEY           (contenuto del file .key generato)
+#    TAURI_SIGNING_PRIVATE_KEY_PASSWORD  (password scelta alla generazione)
+# =====================================================================
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Installa dipendenze frontend
+        run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Lavori da fare ${{ github.ref_name }}"
+          releaseDraft: false
+          prerelease: false

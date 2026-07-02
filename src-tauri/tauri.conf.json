@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Lavori da fare",
+  "version": "0.1.0",
+  "identifier": "it.equasrlra.lavori",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "I miei lavori da fare",
+        "width": 1040,
+        "height": 820,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUxMjcxQzIwN0U2QTRGOUIKUldTYlQycCtJQnduVVUwc0pXSHRmNlgzaWc2MURTM2tRN29MOUQ0OGYzZTAwTkhvUmJBaHdJYnAK",
+      "endpoints": [
+        "https://github.com/mbrashaequa/work-status-tracker/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
