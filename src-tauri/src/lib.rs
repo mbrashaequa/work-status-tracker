@@ -35,26 +35,6 @@ fn app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// Avvia leggi-posta.ps1 (Outlook classico) in background, finestra nascosta.
-fn avvia_lettura_posta() {
-    let script = data_dir().join("leggi-posta.ps1");
-    if !script.exists() {
-        eprintln!("leggi-posta.ps1 non trovato in {}", script.display());
-        return;
-    }
-    let _ = std::process::Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-WindowStyle",
-            "Hidden",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-        ])
-        .arg(script)
-        .spawn();
-}
-
 /// Controllo aggiornamenti con richiesta di conferma.
 fn controlla_aggiornamenti(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -100,7 +80,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            avvia_lettura_posta();
+            // La lettura posta ora gira nell'Utilità di pianificazione di Windows,
+            // indipendente dall'app (un solo poller, nessuna finestra).
             controlla_aggiornamenti(app.handle().clone());
             Ok(())
         })
